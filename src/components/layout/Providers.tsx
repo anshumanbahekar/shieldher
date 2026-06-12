@@ -18,6 +18,8 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const supabase = createClient();
 
   useEffect(() => {
+    pendo.initialize({ visitor: { id: '' } });
+
     const bootstrap = async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setLoaded(true); return; }
@@ -28,12 +30,29 @@ export function Providers({ children }: { children: React.ReactNode }) {
       ]);
 
       if (profileRes.data) {
-        setProfile(profileRes.data as Profile);
+        const p = profileRes.data;
+        setProfile(p as Profile);
         // Gap 2 — identify user in Novus after profile loads
         Analytics.identify(user.id, {
-          name: profileRes.data.full_name,
-          country: profileRes.data.country_code,
+          name: p.full_name,
+          country: p.country_code,
           contactCount: contactsRes.data?.length ?? 0,
+        });
+        pendo.identify({
+          visitor: {
+            id: p.id,
+            email: p.email,
+            full_name: p.full_name,
+            country_code: p.country_code,
+            disguise_mode_enabled: p.disguise_mode_enabled,
+            disguise_type: p.disguise_type,
+            shake_sensitivity: p.shake_sensitivity,
+            voice_sos_enabled: p.voice_sos_enabled,
+            check_in_default_minutes: p.check_in_default_minutes,
+            onboarding_completed: (p as any).onboarding_completed,
+            created_at: p.created_at,
+            updated_at: p.updated_at,
+          },
         });
       }
       if (contactsRes.data) setContacts(contactsRes.data as TrustedContact[]);
@@ -45,6 +64,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event) => {
       if (event === "SIGNED_OUT") {
         useUserStore.getState().reset();
+        pendo.clearSession();
         window.location.href = "/auth/login";
       }
       if (event === "SIGNED_IN") bootstrap();
