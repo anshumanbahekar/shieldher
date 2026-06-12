@@ -148,7 +148,18 @@ export default function EmergencyPage() {
         {filtered.map(([code, data]) => (
           <motion.button
             key={code}
-            onClick={() => { setSelectedCode(code); setSearch(""); Analytics.emergencyNumberViewed(code); }}
+            onClick={() => {
+              setSelectedCode(code); setSearch(""); Analytics.emergencyNumberViewed(code);
+
+              // Pendo Track Event
+              if (typeof pendo !== "undefined") {
+                pendo.track("Emergency Number Viewed", {
+                  country_code: code,
+                  country_name: data.country,
+                  is_user_country: code === defaultCode,
+                });
+              }
+            }}
             className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
               selectedCode === code
                 ? "bg-shield-500/10 border border-shield-500/30"

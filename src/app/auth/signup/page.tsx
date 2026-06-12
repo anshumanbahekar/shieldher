@@ -55,11 +55,28 @@ export default function SignupPage() {
     });
 
     if (error) { setError(error.message); setLoading(false); return; }
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("User Sign-up Completed", {
+        auth_method: "email",
+        has_full_name: !!fullName,
+      });
+    }
+
     setSuccess(true);
     setTimeout(() => router.push("/auth/onboarding"), 2000);
   };
 
   const signUpWithGoogle = async () => {
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("User Sign-up Completed", {
+        auth_method: "google",
+        has_full_name: false,
+      });
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

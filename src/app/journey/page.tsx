@@ -9,6 +9,9 @@ import { useSOS } from "@/lib/hooks/useSOS";
 import { Analytics } from "@/lib/analytics/novus";
 import "mapbox-gl/dist/mapbox-gl.css";
 
+// Module-level dedup guard for journey completion tracked inside polling loop
+const trackedJourneyCompletions = new Set<string>();
+
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN!;
 
 const routeLayer: LayerProps = {
@@ -64,8 +67,20 @@ export default function JourneyPage() {
         }),
       });
       const { data } = await res.json();
-      if (data?.journey_completed) setStep("arrived");
-  Analytics.journeyCompleted(0);
+      if (data?.journey_completed) {
+        setStep("arrived");
+        Analytics.journeyCompleted(0);
+
+        // Pendo Track Event — dedup to avoid re-firing on remount
+        if (typeof pendo !== "undefined" && journeyId && !trackedJourneyCompletions.has(journeyId)) {
+          trackedJourneyCompletions.add(journeyId);
+          pendo.track("Journey Completed", {
+            completion_method: "auto_detected",
+            contact_count: selectedContacts.length,
+            breadcrumb_count: breadcrumbs.length,
+          });
+        }
+      }
     };
 
     ping();
@@ -116,7 +131,16 @@ export default function JourneyPage() {
       setJourneyId(data.journey_id);
       setBreadcrumbs([[longitude!, latitude!]]);
       setStep("active");
-    Analytics.journeyStarted(selectedContacts.length);
+      Analytics.journeyStarted(selectedContacts.length);
+
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("Journey Started", {
+          contact_count: selectedContacts.length,
+          destination_address: destCoords.address,
+          has_route_polyline: false,
+        });
+      }
     }
     setIsStarting(false);
   };
@@ -129,7 +153,17 @@ export default function JourneyPage() {
       body: JSON.stringify({ journey_id: journeyId }),
     });
     setStep("arrived");
-  Analytics.journeyCompleted(0);
+    Analytics.journeyCompleted(0);
+
+    // Pendo Track Event — dedup to avoid double-firing with auto-detection
+    if (typeof pendo !== "undefined" && journeyId && !trackedJourneyCompletions.has(journeyId)) {
+      trackedJourneyCompletions.add(journeyId);
+      pendo.track("Journey Completed", {
+        completion_method: "manual",
+        contact_count: selectedContacts.length,
+        breadcrumb_count: breadcrumbs.length,
+      });
+    }
   };
 
   return (

@@ -18,10 +18,25 @@ export default function LoginPage() {
     setLoading(true); setError("");
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) { setError(error.message); setLoading(false); return; }
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("User Login Completed", {
+        auth_method: "email",
+      });
+    }
+
     router.push("/dashboard");
   };
 
   const signInWithGoogle = async () => {
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("User Login Completed", {
+        auth_method: "google",
+      });
+    }
+
     await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${window.location.origin}/auth/callback` },

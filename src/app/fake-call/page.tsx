@@ -76,6 +76,7 @@ export default function FakeCallPage() {
   const scriptTimerRef = useRef<NodeJS.Timeout | null>(null);
   const ambientRef = useRef<HTMLAudioElement | null>(null);
   const ringtoneRef = useRef<HTMLAudioElement | null>(null);
+  const callStartTimeRef = useRef<number | null>(null);
   const { deactivateFakeCall } = useUIStore();
 
   const callerName = customCallerName || selectedScript.callerName;
@@ -86,6 +87,17 @@ export default function FakeCallPage() {
     if (delayTimerRef.current) clearTimeout(delayTimerRef.current);
 
     Analytics.fakeCallScheduled(delaySeconds, selectedScript.id);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Fake Call Scheduled", {
+        delay_seconds: delaySeconds,
+        script_id: selectedScript.id,
+        ambient_sound: ambientSound,
+        has_custom_caller_name: !!customCallerName,
+      });
+    }
+
     delayTimerRef.current = setTimeout(() => {
       setPhase("ringing");
       // Vibrate pattern for incoming call
@@ -100,6 +112,17 @@ export default function FakeCallPage() {
     setPhase("active");
     setCallDuration(0);
     setActiveLineIndex(0);
+
+    callStartTimeRef.current = Date.now();
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Fake Call Answered", {
+        script_id: selectedScript.id,
+        ambient_sound: ambientSound,
+        caller_name_customized: !!customCallerName,
+      });
+    }
 
     // Ambient sound
     if (ambientSound !== "none" && AMBIENT_SOUNDS[ambientSound]) {
@@ -128,6 +151,15 @@ export default function FakeCallPage() {
   }, [ambientSound, selectedScript]);
 
   const endCall = useCallback(() => {
+    // Pendo Track Event
+    if (typeof pendo !== "undefined" && callStartTimeRef.current) {
+      const durationSeconds = Math.round((Date.now() - callStartTimeRef.current) / 1000);
+      pendo.track("Fake Call Completed", {
+        call_duration_seconds: durationSeconds,
+      });
+      callStartTimeRef.current = null;
+    }
+
     setPhase("ended");
     if (callTimerRef.current) clearInterval(callTimerRef.current);
     if (ambientRef.current) { ambientRef.current.pause(); ambientRef.current = null; }

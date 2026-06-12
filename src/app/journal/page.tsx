@@ -68,6 +68,18 @@ export default function JournalPage() {
       await loadEntries();
       setView("list");
     Analytics.journalEntryCreated(severity, selectedTags.length > 0);
+
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("Journal Entry Created", {
+          severity,
+          has_tags: selectedTags.length > 0,
+          tag_count: selectedTags.length,
+          tags: selectedTags.join(","),
+          has_location: attachLocation && !!latitude,
+          content_length: content.length,
+        });
+      }
     }
     setIsSaving(false);
   };
@@ -93,6 +105,16 @@ export default function JournalPage() {
     const blob = new Blob([content], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a"); a.href = url; a.download = `incident-${selected.id.slice(0,8)}.txt`; a.click();
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Journal Entry Exported", {
+        export_format: "txt",
+        severity: selected.severity,
+        has_location: !!selected.address,
+        tag_count: selected.tags?.length ?? 0,
+      });
+    }
   };
 
   return (

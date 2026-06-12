@@ -67,15 +67,29 @@ export default function SettingsPage() {
     setTimeout(() => setSavedFlash(false), 2000);
   };
 
-  const saveAll = () => save({
-    sos_message: sosMessage,
-    voice_trigger_phrase: voicePhrase,
-    voice_sos_enabled: voiceEnabled,
-    shake_sensitivity: shakeSensitivity,
-    disguise_mode_enabled: disguiseEnabled,
-    disguise_type: disguiseType,
-    check_in_default_minutes: checkInDefault,
-  });
+  const saveAll = () => {
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Settings Saved", {
+        voice_sos_enabled: voiceEnabled,
+        shake_sensitivity: shakeSensitivity,
+        disguise_mode_enabled: disguiseEnabled,
+        disguise_type: disguiseType,
+        check_in_default_minutes: checkInDefault,
+        sos_message_length: sosMessage.length,
+      });
+    }
+
+    save({
+      sos_message: sosMessage,
+      voice_trigger_phrase: voicePhrase,
+      voice_sos_enabled: voiceEnabled,
+      shake_sensitivity: shakeSensitivity,
+      disguise_mode_enabled: disguiseEnabled,
+      disguise_type: disguiseType,
+      check_in_default_minutes: checkInDefault,
+    });
+  };
 
   return (
     <div className="min-h-dvh bg-night-950 pb-safe">
@@ -185,7 +199,21 @@ export default function SettingsPage() {
           >
             <Toggle
               value={disguiseEnabled}
-              onChange={(v) => { setDisguiseEnabled(v); if (v) activateDisguise(); else deactivateDisguise(); }}
+              onChange={(v) => {
+                setDisguiseEnabled(v);
+                if (v) {
+                  activateDisguise();
+
+                  // Pendo Track Event
+                  if (typeof pendo !== "undefined") {
+                    pendo.track("Disguise Mode Activated", {
+                      disguise_type: disguiseType,
+                    });
+                  }
+                } else {
+                  deactivateDisguise();
+                }
+              }}
             />
           </SettingRow>
 

@@ -74,6 +74,14 @@ export default function ContactDashboardPage({ params }: { params: { token: stri
       body: JSON.stringify({ alert_id: data.activeAlert.id, contact_name: contactName }),
     });
     setAcknowledged(true);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("SOS Alert Acknowledged", {
+        alert_id: data.activeAlert.id,
+        contact_name: contactName,
+      });
+    }
   };
 
   if (loading) return (
