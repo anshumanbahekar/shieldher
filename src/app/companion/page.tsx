@@ -59,8 +59,19 @@ export default function CompanionPage() {
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: text, timestamp: new Date() };
     const assistantId = (Date.now() + 1).toString();
 
-    if (detectCrisis(text)) setCrisisMode(true);
-    Analytics.companionMessageSent(detectCrisis(text));
+    const isCrisis = detectCrisis(text);
+    if (isCrisis) setCrisisMode(true);
+    Analytics.companionMessageSent(isCrisis);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Companion Message Sent", {
+        crisis_mode: isCrisis,
+        message_count_in_session: messages.length,
+        is_quick_action: QUICK_ACTIONS.some((a) => a.prompt === text),
+        country_code: profile?.country_code ?? "unknown",
+      });
+    }
 
     window.pendo?.trackAgent("prompt", {
       agentId: PENDO_AGENT_ID,

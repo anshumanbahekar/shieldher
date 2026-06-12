@@ -3,6 +3,7 @@ import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { Analytics } from "@/lib/analytics/novus";
 
 const STEPS = ["Your Info", "Your Country", "First Contact", "Test SOS"];
 
@@ -61,8 +62,20 @@ export default function OnboardingPage() {
     next();
   };
 
-  const finish = () => Analytics.onboardingCompleted(country, contactName ? 1 : 0);
+  const finish = () => {
+    Analytics.onboardingCompleted(country, contactName ? 1 : 0);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Onboarding Completed", {
+        country_code: country,
+        contact_count: contactName ? 1 : 0,
+        has_phone_number: !!phone,
+      });
+    }
+
     router.push("/dashboard");
+  };
 
   return (
     <div className="min-h-dvh bg-night-950 flex flex-col px-5 pt-safe pb-safe">

@@ -29,6 +29,18 @@ export function useSOS() {
       // Track in Novus
       Analytics.sosTriggered(trigger);
 
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("SOS Triggered", {
+          trigger_method: trigger,
+          timestamp: new Date().toISOString(),
+          latitude: latitude ?? undefined,
+          longitude: longitude ?? undefined,
+          accuracy: accuracy ?? undefined,
+          battery_level: batteryLevel ?? undefined,
+        });
+      }
+
       try {
         const response = await fetch("/api/sos/trigger", {
           method: "POST",
@@ -96,7 +108,17 @@ export function useSOS() {
 
     // Track duration in Novus
     if (sosStartTimeRef.current) {
-      Analytics.sosResolved(Math.round((Date.now() - sosStartTimeRef.current) / 1000));
+      const durationSeconds = Math.round((Date.now() - sosStartTimeRef.current) / 1000);
+      Analytics.sosResolved(durationSeconds);
+
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("SOS Resolved", {
+          duration_seconds: durationSeconds,
+          alert_id: activeAlert?.id,
+        });
+      }
+
       sosStartTimeRef.current = null;
     }
 

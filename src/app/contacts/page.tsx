@@ -61,6 +61,15 @@ export default function ContactsPage() {
 
     if (editContact) {
       await supabase.from("trusted_contacts").update(payload).eq("id", editContact.id);
+
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("Contact Updated", {
+          role,
+          relationship,
+          alert_method: alertMethod,
+        });
+      }
     } else {
       const priority = contacts.length + 1;
       await supabase.from("trusted_contacts").insert({ ...payload, priority });
@@ -68,13 +77,35 @@ export default function ContactsPage() {
 
     await loadContacts();
     setShowForm(false);
-    if (!editContact) Analytics.contactAdded(role);
+    if (!editContact) {
+      Analytics.contactAdded(role);
+
+      // Pendo Track Event
+      if (typeof pendo !== "undefined") {
+        pendo.track("Contact Added", {
+          role,
+          relationship,
+          alert_method: alertMethod,
+          contact_count_total: contacts.length + 1,
+        });
+      }
+    }
     setIsSaving(false);
   };
 
   const remove = async (id: string) => {
+    const removedContact = contacts.find((c) => c.id === id);
     await supabase.from("trusted_contacts").delete().eq("id", id);
     await loadContacts();
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined" && removedContact) {
+      pendo.track("Contact Removed", {
+        role: removedContact.role,
+        relationship: removedContact.relationship,
+        contact_count_remaining: contacts.length - 1,
+      });
+    }
   };
 
   return (

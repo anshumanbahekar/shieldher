@@ -102,6 +102,18 @@ export default function SafetyMapPage() {
     });
     setIsSubmitting(false);
     Analytics.safetyReportSubmitted(reportType);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Safety Report Submitted", {
+        report_type: reportType,
+        time_of_day: reportTimeOfDay,
+        has_description: !!reportDesc,
+        latitude: latitude ?? undefined,
+        longitude: longitude ?? undefined,
+      });
+    }
+
     setSubmitted(true);
     setShowReportSheet(false);
     setTimeout(() => setSubmitted(false), 3000);

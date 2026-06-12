@@ -50,7 +50,18 @@ export default function DashboardPage() {
     const interval = setInterval(() => {
       const left = Math.max(0, Math.floor((new Date(activeCheckIn.safe_by).getTime() - Date.now()) / 60000));
       setTimeLeft(left);
-      if (left === 0) { setActiveCheckIn(null); setTimeLeft(null); Analytics.checkInMissed(); }
+      if (left === 0) {
+        setActiveCheckIn(null);
+        setTimeLeft(null);
+        Analytics.checkInMissed();
+
+        // Pendo Track Event
+        if (typeof pendo !== "undefined") {
+          pendo.track("Check-in Missed", {
+            duration_minutes: checkInMinutes,
+          });
+        }
+      }
     }, 10000);
     return () => clearInterval(interval);
   }, [activeCheckIn]);
@@ -72,6 +83,15 @@ export default function DashboardPage() {
     setShowCheckIn(false);
     setCheckingIn(false);
     Analytics.checkInStarted(checkInMinutes);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Check-in Started", {
+        duration_minutes: checkInMinutes,
+        has_label: !!checkInLabel,
+        contact_count: contacts.filter((c) => c.role === "first_responder").length,
+      });
+    }
   };
 
   const confirmSafe = async () => {
@@ -84,6 +104,15 @@ export default function DashboardPage() {
     setActiveCheckIn(null);
     setTimeLeft(null);
     Analytics.checkInConfirmed();
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Check-in Confirmed", {
+        time_remaining_minutes: timeLeft ?? 0,
+        check_in_id: activeCheckIn?.check_in_id,
+      });
+    }
+
     if ("vibrate" in navigator) navigator.vibrate([100, 50, 100]);
   };
 
@@ -93,6 +122,13 @@ export default function DashboardPage() {
     navigator.clipboard.writeText(url);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+
+    // Pendo Track Event
+    if (typeof pendo !== "undefined") {
+      pendo.track("Dashboard Link Shared", {
+        share_method: "clipboard",
+      });
+    }
   };
 
   if (isDisguiseModeActive) return <DisguiseCalculator />;
@@ -248,6 +284,13 @@ export default function DashboardPage() {
                     const url = `${window.location.origin}/contact-dashboard/${(profile as any).contact_dashboard_token}`;
                     if (navigator.share) {
                       navigator.share({ title: "ShieldHer Dashboard", text: "Monitor my safety in real-time", url });
+
+                      // Pendo Track Event
+                      if (typeof pendo !== "undefined") {
+                        pendo.track("Dashboard Link Shared", {
+                          share_method: "native_share",
+                        });
+                      }
                     }
                   }}
                   className="flex-1 btn-ghost py-4 rounded-2xl text-sm">
