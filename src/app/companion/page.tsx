@@ -5,6 +5,16 @@ import { useSOS } from "@/lib/hooks/useSOS";
 import { Analytics } from "@/lib/analytics/novus";
 import { useUserStore, useLocationStore } from "@/stores";
 
+declare global {
+  interface Window {
+    pendo?: {
+      trackAgent: (eventType: string, metadata: object) => void;
+    };
+  }
+}
+
+const PENDO_AGENT_ID = "SwhAwGf9_4oM-wzX28UwSPorOqM";
+
 interface Message { id: string; role: "user" | "assistant"; content: string; timestamp: Date; }
 
 const QUICK_ACTIONS = [
@@ -31,6 +41,7 @@ export default function CompanionPage() {
   const { latitude, longitude } = useLocationStore();
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const conversationId = useRef(crypto.randomUUID());
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,7 +53,7 @@ export default function CompanionPage() {
     return crisisWords.some((w) => text.toLowerCase().includes(w));
   };
 
-  const sendMessage = useCallback(async (text: string) => {
+  const sendMessage = useCallback(async (text: string, suggestedPrompt = false) => {
     if (!text.trim() || isStreaming) return;
 
     const userMsg: Message = { id: Date.now().toString(), role: "user", content: text, timestamp: new Date() };
@@ -50,6 +61,14 @@ export default function CompanionPage() {
 
     if (detectCrisis(text)) setCrisisMode(true);
     Analytics.companionMessageSent(detectCrisis(text));
+
+    window.pendo?.trackAgent("prompt", {
+      agentId: PENDO_AGENT_ID,
+      conversationId: conversationId.current,
+      messageId: userMsg.id,
+      content: text,
+      suggestedPrompt,
+    });
 
     setMessages((prev) => [...prev, userMsg, { id: assistantId, role: "assistant", content: "", timestamp: new Date() }]);
     setInput("");
@@ -89,6 +108,14 @@ export default function CompanionPage() {
           } catch {}
         }
       }
+
+      window.pendo?.trackAgent("agent_response", {
+        agentId: PENDO_AGENT_ID,
+        conversationId: conversationId.current,
+        messageId: assistantId,
+        content: fullText,
+        modelUsed: "claude-opus-4-5-20251101",
+      });
     } catch (err) {
       setMessages((prev) =>
         prev.map((m) => m.id === assistantId
@@ -191,7 +218,7 @@ export default function CompanionPage() {
             {QUICK_ACTIONS.map((action) => (
               <button
                 key={action.label}
-                onClick={() => sendMessage(action.prompt)}
+                onClick={() => sendMessage(action.prompt, true)}
                 className="text-left px-3 py-2.5 rounded-xl bg-night-800 border border-white/5 text-night-300 text-xs hover:border-shield-500/30 transition-colors"
               >
                 {action.label}
